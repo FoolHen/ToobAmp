@@ -123,13 +123,13 @@ static std::vector<std::vector<float> > Transpose(const std::vector<std::vector<
 
 	return result;
 }
-template <int N_INPUTS>
+template <int N_INPUTS, int SIZE>
 class MlModelInstance: public ToobMlModel
 {
 private:
     RTNeural::ModelT<float, N_INPUTS, 1,
-        RTNeural::LSTMLayerT<float, N_INPUTS, 20>,
-        RTNeural::DenseT<float, 20, 1>> model;
+        RTNeural::LSTMLayerT<float, N_INPUTS, SIZE>,
+        RTNeural::DenseT<float, SIZE, 1>> model;
 
 	using FloatMatrix = std::vector<std::vector<float> >;
 	float inData[3];
@@ -194,15 +194,48 @@ ToobMlModel* ToobMlModel::Load(const std::string&fileName)
 {
 	NeuralModel jsonModel;
 	jsonModel.Load(fileName);
+	int hiddenSize = jsonModel.model_data().hidden_size();
 	switch (jsonModel.model_data().input_size())
 	{
 	case 1:
-		return new MlModelInstance<1>(jsonModel);
+		switch (hiddenSize)
+		{
+		case 20:
+			return new MlModelInstance<1,20>(jsonModel);
+			break;
+		case 40:
+			return new MlModelInstance<1,40>(jsonModel);
+			break;
+		default:
+			throw MLException("Invalid model");
+			break;
+		}
 	case 2:
-		return new MlModelInstance<2>(jsonModel);
+		switch (hiddenSize)
+		{
+		case 20:
+			return new MlModelInstance<2,20>(jsonModel);
+			break;
+		case 40:
+			return new MlModelInstance<2,40>(jsonModel);
+			break;
+		default:
+			throw MLException("Invalid model");
+			break;
+		}
 	case 3:
-		return new MlModelInstance<3>(jsonModel);
-
+		switch (hiddenSize)
+		{
+		case 20:
+			return new MlModelInstance<3,20>(jsonModel);
+			break;
+		case 40:
+			return new MlModelInstance<3,40>(jsonModel);
+			break;
+		default:
+			throw MLException("Invalid model");
+			break;
+		}
 	default:
 		throw MLException("Invalid model");
 		break;
@@ -369,8 +402,16 @@ static std::filesystem::path MyDirectory()
 
 void ToobML::LoadModelIndex()
 {
-    auto filePath = MyDirectory().parent_path();
-	filePath = filePath / "models" / "tones";
+	// Order is important, as it has to match model enum in ToobML.ttl.in
+    LoadModelsFromDirectory("tones");
+	LoadModelsFromDirectory("proteus-pedals");
+	LoadModelsFromDirectory("proteus-amps");
+}
+
+void ToobML::LoadModelsFromDirectory(std::string directory)
+{
+	auto filePath = MyDirectory().parent_path();
+	filePath = filePath / "models" / directory;
 
     auto indexFile = filePath / "model.index";
 
@@ -386,7 +427,7 @@ void ToobML::LoadModelIndex()
 		{
 			index.push_back((filePath / line).string());
 		}
-		this->modelFiles = std::move(index);
+		this->modelFiles.insert(this->modelFiles.end(), std::make_move_iterator(index.begin()), std::make_move_iterator(index.end()));
     } else {
 		this->LogError("ToobML: Can't locate model resource files.\n");
 	}

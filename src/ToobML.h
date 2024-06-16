@@ -128,6 +128,7 @@ namespace toob {
 		std::vector<std::string> modelFiles;
 
 		void LoadModelIndex();
+		void LoadModelsFromDirectory(std::string directory);
 		ToobMlModel *LoadModel(size_t index);
 
 		float* output = nullptr;
@@ -222,7 +223,6 @@ namespace toob {
 
 		size_t pendingModelIndex = (size_t)-1;
 		ToobMlModel *pPendingLoad = nullptr;
-
 
 		class LoadWorker: public WorkerAction
 		{
